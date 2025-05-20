@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { hotelService, hotelRoomService } from '../../services/api';
 import Alert from '../../components/Alert';
+import React, { useState } from 'react';
 
 const HotelRoomsList = () => {
   const { id } = useParams();

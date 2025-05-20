@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Formik, Form, Field, ErrorMessage } from 'formik';
 import * as Yup from 'yup';
 import { AppContext } from '../../context/AppContext';
-import { hotelService, hotelRoomService, roomTypeService } from '../../services/api';
+import { hotelService, hotelRoomService } from '../../services/api';
 import Alert from '../../components/Alert';
 
 const HotelRoomSchema = Yup.object().shape({
@@ -47,6 +47,33 @@ const HotelRoomForm = () => {
   const [alert, setAlert] = useState({ type: '', message: '' });
 
   const isEditMode = !!id;
+
+  // Memoizar la función setValidAccommodationsForRoomType usando useCallback
+  const setValidAccommodationsForRoomType = useCallback((roomTypeId) => {
+    const selectedRoomType = roomTypes.find(rt => rt.id.toString() === roomTypeId.toString());
+    
+    if (selectedRoomType) {
+      let validAccoms = [];
+      
+      if (selectedRoomType.name === 'Estándar') {
+        // Filtrar solo acomodaciones Sencilla y Doble
+        validAccoms = accommodations.filter(acc => 
+          acc.name === 'Sencilla' || acc.name === 'Doble');
+      } else if (selectedRoomType.name === 'Junior') {
+        // Filtrar solo acomodaciones Triple y Cuádruple
+        validAccoms = accommodations.filter(acc => 
+          acc.name === 'Triple' || acc.name === 'Cuádruple');
+      } else if (selectedRoomType.name === 'Suite') {
+        // Filtrar acomodaciones Sencilla, Doble y Triple
+        validAccoms = accommodations.filter(acc => 
+          acc.name === 'Sencilla' || acc.name === 'Doble' || acc.name === 'Triple');
+      }
+      
+      setValidAccommodations(validAccoms);
+    } else {
+      setValidAccommodations([]);
+    }
+  }, [roomTypes, accommodations]);
 
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -99,34 +126,7 @@ const HotelRoomForm = () => {
     if (hotelId) {
       fetchInitialData();
     }
-  }, [hotelId, id, isEditMode, accommodations]);
-
-  // Función para establecer acomodaciones válidas basadas en el tipo de habitación
-  const setValidAccommodationsForRoomType = (roomTypeId) => {
-    const selectedRoomType = roomTypes.find(rt => rt.id.toString() === roomTypeId.toString());
-    
-    if (selectedRoomType) {
-      let validAccoms = [];
-      
-      if (selectedRoomType.name === 'Estándar') {
-        // Filtrar solo acomodaciones Sencilla y Doble
-        validAccoms = accommodations.filter(acc => 
-          acc.name === 'Sencilla' || acc.name === 'Doble');
-      } else if (selectedRoomType.name === 'Junior') {
-        // Filtrar solo acomodaciones Triple y Cuádruple
-        validAccoms = accommodations.filter(acc => 
-          acc.name === 'Triple' || acc.name === 'Cuádruple');
-      } else if (selectedRoomType.name === 'Suite') {
-        // Filtrar acomodaciones Sencilla, Doble y Triple
-        validAccoms = accommodations.filter(acc => 
-          acc.name === 'Sencilla' || acc.name === 'Doble' || acc.name === 'Triple');
-      }
-      
-      setValidAccommodations(validAccoms);
-    } else {
-      setValidAccommodations([]);
-    }
-  };
+  }, [hotelId, id, isEditMode, setValidAccommodationsForRoomType]);
 
   const handleRoomTypeChange = (roomTypeId, setFieldValue) => {
     if (!roomTypeId) {
@@ -154,10 +154,10 @@ const HotelRoomForm = () => {
       const dataToSubmit = { ...values, hotel_id: parseInt(hotelId) };
       
       if (isEditMode) {
-        const response = await hotelRoomService.update(id, dataToSubmit);
+        await hotelRoomService.update(id, dataToSubmit);
         setAlert({ type: 'success', message: 'Configuración de habitación actualizada correctamente.' });
       } else {
-        const response = await hotelRoomService.create(dataToSubmit);
+        await hotelRoomService.create(dataToSubmit);
         setAlert({ type: 'success', message: 'Configuración de habitación creada correctamente.' });
       }
       
@@ -219,7 +219,7 @@ const HotelRoomForm = () => {
               onSubmit={handleSubmit}
               enableReinitialize={true}
             >
-              {({ isSubmitting, errors, touched, setFieldValue, values }) => (
+              {({ isSubmitting, errors, touched, setFieldValue }) => (
                 <Form>
                   <div className="mb-3">
                     <label htmlFor="room_type_id" className="form-label">Tipo de Habitación</label>
